@@ -266,6 +266,174 @@
         let timeLeft = 60;
         let timer;
         let gameStarted = false;
+        let peerConnection;
+        let dataChannel;
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        
+        // Initialize the connection when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setupWebRTC();
+        });
+        
+        function setupWebRTC() {
+            // Create unique room ID from URL or generate one
+            const roomId = window.location.hash.substring(1) || generateRoomId();
+            if (!window.location.hash) {
+                window.location.hash = roomId;
+                document.querySelector('.player-info').textContent = "Player 1 (Host)";
+                document.getElementById('startBtn').style.display = 'inline-block';
+            } else {
+                document.querySelector('.player-info').textContent = "Player 2 (Guest)";
+                document.getElementById('startBtn').style.display = 'none';
+            }
+            
+            // Initialize PeerConnection
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            // Set up data channel
+            if (!window.location.hash) { // Host creates the data channel
+                dataChannel = peerConnection.createDataChannel('drawing');
+                setupDataChannel();
+                createOffer();
+            } else { // Guest waits for data channel
+                peerConnection.ondatachannel = event => {
+                    dataChannel = event.channel;
+                    setupDataChannel();
+                };
+            }
+            
+            // ICE candidate exchange
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    // In a real app, you'd send this to the other peer via a signaling server
+                    // For this simple demo, we'll just show it in the console
+                    console.log("ICE Candidate:", event.candidate);
+                }
+            };
+        }
+        
+        function setupDataChannel() {
+            dataChannel.onopen = () => {
+                console.log("Data channel opened!");
+                if (!window.location.hash) { // Host starts the game
+                    document.getElementById('startBtn').addEventListener('click', startGame);
+                }
+            };
+            
+            dataChannel.onmessage = event => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'draw') {
+                    // Draw on the other player's canvas
+                    const ctx = window.location.hash ? ctx1 : ctx2;
+                    ctx.strokeStyle = data.color;
+                    ctx.lineTo(data.x, data.y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(data.x, data.y);
+                } else if (data.type === 'clear') {
+                    // Clear the other player's canvas
+                    const canvas = window.location.hash ? canvas1 : canvas2;
+                    const ctx = window.location.hash ? ctx1 : ctx2;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    initCanvas(ctx, canvas);
+                } else if (data.type === 'start') {
+                    startGame();
+                }
+            };
+        }
+        
+        async function createOffer() {
+            try {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                console.log("Offer created:", offer);
+                // In a real app, you'd send this offer to the other peer
+            } catch (error) {
+                console.error("Error creating offer:", error);
+            }
+        }
+        
+        function generateRoomId() {
+            return Math.random().toString(36).substring(2, 8);
+        }
+        
+        // Modified drawing functions to send data
+        function draw1(e) {
+            if (!isDrawing1) return;
+            ctx1.lineTo(e.offsetX, e.offsetY);
+            ctx1.stroke();
+            ctx1.beginPath();
+            ctx1.moveTo(e.offsetX, e.offsetY);
+            
+            // Send drawing data to the other peer
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({
+                    type: 'draw',
+                    x: e.offsetX,
+                    y: e.offsetY,
+                    color: currentColor
+                }));
+            }
+        }
+        
+        function draw2(e) {
+            if (!isDrawing2) return;
+            ctx2.lineTo(e.offsetX, e.offsetY);
+            ctx2.stroke();
+            ctx2.beginPath();
+            ctx2.moveTo(e.offsetX, e.offsetY);
+            
+            // Send drawing data to the other peer
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({
+                    type: 'draw',
+                    x: e.offsetX,
+                    y: e.offsetY,
+                    color: currentColor
+                }));
+            }
+        }
+        
+        // Modified clear functions to send data
+        clearBtn1.addEventListener('click', function() {
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+            initCanvas(ctx1, canvas1);
+            
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'clear' }));
+            }
+        });
+        
+        clearBtn2.addEventListener('click', function() {
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+            initCanvas(ctx2, canvas2);
+            
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({ type: 'clear' }));
+            }
+        });
+        
+        function startGame() {
+            if (dataChannel && dataChannel.readyState === 'open' && !window.location.hash) {
+                dataChannel.send(JSON.stringify({ type: 'start' }));
+            }
+            
+            gameStarted = true;
+            startBtn.style.display = 'none';
+            submitBtn.style.display = 'inline-block';
+            promptElement.textContent = prompts[Math.floor(Math.random() * prompts.length)];
+            
+            timeLeft = 60;
+            updateTimer();
+            timer = setInterval(function() {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    submitDrawings();
+                }
+            }, 1000);
+        }
         
         // Initialize canvases
         function initCanvas(ctx, canvas) {
