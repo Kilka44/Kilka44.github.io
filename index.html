@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Together!</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .game-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .drawing-board {
+            width: 48%;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        canvas {
+            border: 1px solid #ddd;
+            background-color: white;
+            cursor: crosshair;
+            margin-bottom: 10px;
+        }
+        
+        .player-info {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .tools {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .color-picker {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .color {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ddd;
+        }
+        
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .prompt {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9f7ef;
+            border-radius: 8px;
+        }
+        
+        .results {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .rating {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+        }
+        
+        .rating-item {
+            text-align: center;
+        }
+        
+        .stars {
+            color: gold;
+            font-size: 24px;
+            margin-top: 5px;
+        }
+        
+        .drawing-comparison {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .drawing-thumbnail {
+            width: 200px;
+            height: 200px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Draw Together!</h1>
+    <p>You and a friend will draw the same thing. Who will do better?</p>
+    
+    <div class="prompt" id="prompt">Elephant</div>
+    <div class="timer" id="timer">1:00</div>
+    
+    <div class="game-container">
+        <div class="drawing-board">
+            <div class="player-info">Player 1 (You)</div>
+            <canvas id="canvas1" width="500" height="400"></canvas>
+            <div class="tools">
+                <button id="clear1">Clear</button>
+                <div class="color-picker">
+                    <div class="color" style="background-color: black;" data-color="black"></div>
+                    <div class="color" style="background-color: red;" data-color="red"></div>
+                    <div class="color" style="background-color: blue;" data-color="blue"></div>
+                    <div class="color" style="background-color: green;" data-color="green"></div>
+                    <div class="color" style="background-color: yellow;" data-color="yellow"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="drawing-board">
+            <div class="player-info">Player 2 (Friend)</div>
+            <canvas id="canvas2" width="500" height="400"></canvas>
+            <div class="tools">
+                <button id="clear2">Clear</button>
+                <div class="color-picker">
+                    <div class="color" style="background-color: black;" data-color="black"></div>
+                    <div class="color" style="background-color: red;" data-color="red"></div>
+                    <div class="color" style="background-color: blue;" data-color="blue"></div>
+                    <div class="color" style="background-color: green;" data-color="green"></div>
+                    <div class="color" style="background-color: yellow;" data-color="yellow"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button id="startBtn">Start Game</button>
+    <button id="submitBtn" style="display: none; background-color: #f44336;">Submit Drawings</button>
+    
+    <div class="results" id="results">
+        <h2>Results</h2>
+        <div class="drawing-comparison">
+            <div>
+                <h3>Your Drawing</h3>
+                <canvas id="resultCanvas1" class="drawing-thumbnail" width="200" height="200"></canvas>
+            </div>
+            <div>
+                <h3>Friend's Drawing</h3>
+                <canvas id="resultCanvas2" class="drawing-thumbnail" width="200" height="200"></canvas>
+            </div>
+        </div>
+        
+        <h3>Your Drawing Ratings</h3>
+        <div class="rating">
+            <div class="rating-item">
+                <div>Creativity</div>
+                <div class="stars" id="creativity1">★★★★★</div>
+            </div>
+            <div class="rating-item">
+                <div>Accuracy</div>
+                <div class="stars" id="accuracy1">★★★★★</div>
+            </div>
+            <div class="rating-item">
+                <div>Detail</div>
+                <div class="stars" id="detail1">★★★★★</div>
+            </div>
+        </div>
+        
+        <h3>Friend's Drawing Ratings</h3>
+        <div class="rating">
+            <div class="rating-item">
+                <div>Creativity</div>
+                <div class="stars" id="creativity2">★★★★★</div>
+            </div>
+            <div class="rating-item">
+                <div>Accuracy</div>
+                <div class="stars" id="accuracy2">★★★★★</div>
+            </div>
+            <div class="rating-item">
+                <div>Detail</div>
+                <div class="stars" id="detail2">★★★★★</div>
+            </div>
+        </div>
+        
+        <button id="playAgainBtn">Play Again</button>
+    </div>
+    
+    <script>
+        // Game prompts
+        const prompts = [
+            "Elephant",
+            "House",
+            "Tree",
+            "Car",
+            "Dog",
+            "Cat",
+            "Bicycle",
+            "Mountain",
+            "Flower",
+            "Person"
+        ];
+        
+        // DOM elements
+        const canvas1 = document.getElementById('canvas1');
+        const canvas2 = document.getElementById('canvas2');
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        const clearBtn1 = document.getElementById('clear1');
+        const clearBtn2 = document.getElementById('clear2');
+        const startBtn = document.getElementById('startBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const timerElement = document.getElementById('timer');
+        const promptElement = document.getElementById('prompt');
+        const resultsElement = document.getElementById('results');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        
+        // Drawing state
+        let isDrawing1 = false;
+        let isDrawing2 = false;
+        let currentColor = 'black';
+        let timeLeft = 60;
+        let timer;
+        let gameStarted = false;
+        
+        // Initialize canvases
+        function initCanvas(ctx, canvas) {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+        }
+        
+        initCanvas(ctx1, canvas1);
+        initCanvas(ctx2, canvas2);
+        
+        // Event listeners for Player 1 (You)
+        canvas1.addEventListener('mousedown', startDrawing1);
+        canvas1.addEventListener('mousemove', draw1);
+        canvas1.addEventListener('mouseup', stopDrawing1);
+        canvas1.addEventListener('mouseout', stopDrawing1);
+        
+        // Event listeners for Player 2 (Friend)
+        canvas2.addEventListener('mousedown', startDrawing2);
+        canvas2.addEventListener('mousemove', draw2);
+        canvas2.addEventListener('mouseup', stopDrawing2);
+        canvas2.addEventListener('mouseout', stopDrawing2);
+        
+        // Color pickers
+        document.querySelectorAll('.color').forEach(color => {
+            color.addEventListener('click', function() {
+                currentColor = this.getAttribute('data-color');
+                ctx1.strokeStyle = currentColor;
+                ctx2.strokeStyle = currentColor;
+                document.querySelectorAll('.color').forEach(c => {
+                    c.style.border = '2px solid #ddd';
+                });
+                this.style.border = '2px solid #333';
+            });
+        });
+        
+        // Clear buttons
+        clearBtn1.addEventListener('click', function() {
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+            initCanvas(ctx1, canvas1);
+        });
+        
+        clearBtn2.addEventListener('click', function() {
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+            initCanvas(ctx2, canvas2);
+        });
+        
+        // Drawing functions for Player 1
+        function startDrawing1(e) {
+            if (!gameStarted) return;
+            isDrawing1 = true;
+            draw1(e);
+        }
+        
+        function draw1(e) {
+            if (!isDrawing1) return;
+            ctx1.lineTo(e.offsetX, e.offsetY);
+            ctx1.stroke();
+            ctx1.beginPath();
+            ctx1.moveTo(e.offsetX, e.offsetY);
+        }
+        
+        function stopDrawing1() {
+            isDrawing1 = false;
+            ctx1.beginPath();
+        }
+        
+        // Drawing functions for Player 2
+        function startDrawing2(e) {
+            if (!gameStarted) return;
+            isDrawing2 = true;
+            draw2(e);
+        }
+        
+        function draw2(e) {
+            if (!isDrawing2) return;
+            ctx2.lineTo(e.offsetX, e.offsetY);
+            ctx2.stroke();
+            ctx2.beginPath();
+            ctx2.moveTo(e.offsetX, e.offsetY);
+        }
+        
+        function stopDrawing2() {
+            isDrawing2 = false;
+            ctx2.beginPath();
+        }
+        
+        // Start game
+        startBtn.addEventListener('click', function() {
+            gameStarted = true;
+            startBtn.style.display = 'none';
+            submitBtn.style.display = 'inline-block';
+            promptElement.textContent = prompts[Math.floor(Math.random() * prompts.length)];
+            
+            // Start timer
+            timeLeft = 60;
+            updateTimer();
+            timer = setInterval(function() {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    submitDrawings();
+                }
+            }, 1000);
+        });
+        
+        // Update timer display
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            
+            // Change color when time is running out
+            if (timeLeft <= 10) {
+                timerElement.style.color = 'red';
+            } else {
+                timerElement.style.color = '#333';
+            }
+        }
+        
+        // Submit drawings
+        submitBtn.addEventListener('click', submitDrawings);
+        
+        function submitDrawings() {
+            clearInterval(timer);
+            gameStarted = false;
+            submitBtn.style.display = 'none';
+            resultsElement.style.display = 'block';
+            
+            // Show the drawings in results
+            const resultCanvas1 = document.getElementById('resultCanvas1');
+            const resultCtx1 = resultCanvas1.getContext('2d');
+            resultCtx1.drawImage(canvas1, 0, 0, resultCanvas1.width, resultCanvas1.height);
+            
+            const resultCanvas2 = document.getElementById('resultCanvas2');
+            const resultCtx2 = resultCanvas2.getContext('2d');
+            resultCtx2.drawImage(canvas2, 0, 0, resultCanvas2.width, resultCanvas2.height);
+            
+            // Generate random ratings (in a real app, this would be from a judge or algorithm)
+            rateDrawing('1');
+            rateDrawing('2');
+        }
+        
+        // Rate a drawing (random for this demo)
+        function rateDrawing(player) {
+            const creativity = Math.floor(Math.random() * 5) + 1;
+            const accuracy = Math.floor(Math.random() * 5) + 1;
+            const detail = Math.floor(Math.random() * 5) + 1;
+            
+            document.getElementById(`creativity${player}`).textContent = '★'.repeat(creativity) + '☆'.repeat(5 - creativity);
+            document.getElementById(`accuracy${player}`).textContent = '★'.repeat(accuracy) + '☆'.repeat(5 - accuracy);
+            document.getElementById(`detail${player}`).textContent = '★'.repeat(detail) + '☆'.repeat(5 - detail);
+        }
+        
+        // Play again
+        playAgainBtn.addEventListener('click', function() {
+            // Reset canvases
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+            ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+            initCanvas(ctx1, canvas1);
+            initCanvas(ctx2, canvas2);
+            
+            // Reset UI
+            resultsElement.style.display = 'none';
+            startBtn.style.display = 'inline-block';
+            timerElement.textContent = '1:00';
+            timerElement.style.color = '#333';
+        });
+    </script>
+</body>
+</html>
